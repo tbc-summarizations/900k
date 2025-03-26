@@ -1,0 +1,526 @@
+html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Zombie Apocalypse</title>
+    <style>
+        body {
+            background-color: #333;
+            color: white;
+            font-family: sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            overflow: hidden;
+        }
+
+        #gameCanvas {
+            background-color: black;
+            display: block;
+        }
+
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: sans-serif;
+            font-size: 16px;
+            z-index: 20;
+        }
+
+        #hud > div {
+            margin-bottom: 5px;
+        }
+
+        #healthBarOutline {
+            width: 200px;
+            height: 10px;
+            border: 1px solid white;
+        }
+
+        #healthBarFill {
+            background-color: green;
+            height: 100%;
+            width: 100%;
+        }
+
+        #menuScreen, #gameOverScreen, #upgradeScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            text-align: center;
+        }
+
+        #gameOverScreen, #upgradeScreen {
+            display: none;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 1.1em;
+            cursor: pointer;
+            background-color: #444;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            margin: 5px;
+            transition: background-color 0.2s ease;
+        }
+
+        button:hover {
+            background-color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+        <div id="hud">
+            <div id="score">Score: <span id="scoreValue">0</span></div>
+            <div id="wave">Wave: <span id="waveValue">1</span></div>
+            <div id="healthBar">
+                Health:
+                <div id="healthBarOutline">
+                    <div id="healthBarFill"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="menuScreen">
+            <h1>Zombie Apocalypse</h1>
+            <button id="startButton">Start Game</button>
+        </div>
+        <div id="gameOverScreen">
+            <h1>Game Over</h1>
+            <p id="finalScore">Score: 0</p>
+            <button id="restartButton">Restart</button>
+            <button id="menuButton">Main Menu</button>
+        </div>
+        <div id="upgradeScreen">
+            <h1>Upgrades</h1>
+            <div id="upgradeOptions">
+                <button id="upgradeDamage">Damage + 10 (50 Money)</button>
+                <button id="upgradeSpeed">Speed + 0.05 (75 Money)</button>
+            </div>
+            <button id="continueButton">Continue</button>
+        </div>
+    </div>
+
+    <script>
+        function getRandomFloat(min, max) {
+            return Math.random() * (max - min) + min;
+        }
+
+        function checkCollision(rect1, rect2) {
+            return (
+                rect1.x < rect2.x + rect2.width &&
+                rect1.x + rect1.width > rect2.x &&
+                rect1.y < rect2.y + rect2.height &&
+                rect1.y + rect1.height > rect2.y
+            );
+        }
+
+        class Player {
+            constructor(x, y, speed, game) {
+                this.x = x;
+                this.y = y;
+                this.speed = speed;
+                this.angle = 0;
+                this.health = 100;
+                this.maxHealth = 100;
+                this.rotationSpeed = 0.05;
+                this.width = 20;
+                this.height = 20;
+                this.game = game;
+                this.money = 0;
+                this.baseDamage = 10;
+                this.isReloading = false;
+                this.reloadTime = 200;
+                this.lastShotTime = 0;
+            }
+
+            update(deltaTime) {
+                if (this.game.keys['w']) this.y -= this.speed * deltaTime;
+                if (this.game.keys['s']) this.y += this.speed * deltaTime;
+                if (this.game.keys['a']) this.x -= this.speed * deltaTime;
+                if (this.game.keys['d']) this.x += this.speed * deltaTime;
+
+                if (this.game.keys['q']) this.angle -= this.rotationSpeed;
+                if (this.game.keys['e']) this.angle += this.rotationSpeed;
+
+                this.x = Math.max(0, Math.min(this.x, this.game.canvas.width - this.width));
+                this.y = Math.max(0, Math.min(this.y, this.game.canvas.height - this.height));
+            }
+
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+                ctx.rotate(this.angle);
+                ctx.fillStyle = 'blue';
+                ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                ctx.restore();
+
+                ctx.fillStyle = "red";
+                ctx.fillRect(this.x - (this.width), this.y - this.height - 5, this.width * 2, 5)
+                ctx.fillStyle = "green";
+                ctx.fillRect(this.x - (this.width), this.y - this.height - 5, (this.health / this.maxHealth) * this.width * 2, 5)
+            }
+
+            shoot() {
+                if (this.isReloading) return;
+
+                const now = Date.now();
+                if (now - this.lastShotTime < this.reloadTime) return;
+
+                const bulletSpeed = 0.5;
+                const bullet = new Bullet(
+                    this.x + this.width / 2,
+                    this.y + this.height / 2,
+                    this.angle,
+                    bulletSpeed,
+                    this.baseDamage
+                );
+                this.game.bullets.push(bullet);
+
+                this.isReloading = true;
+                setTimeout(() => {
+                    this.isReloading = false;
+                }, this.reloadTime);
+                this.lastShotTime = now;
+            }
+
+            takeDamage(damage) {
+                this.health -= damage;
+                if (this.health <= 0) {
+                    this.health = 0;
+                    this.game.end();
+                }
+            }
+        }
+
+        class Zombie {
+            constructor(x, y, speed, health, game) {
+                this.x = x;
+                this.y = y;
+                this.speed = speed;
+                this.health = health;
+                this.maxHealth = health;
+                this.width = 20;
+                this.height = 20;
+                this.game = game;
+                this.moneyDrop = 10;
+                this.attackDamage = 0.1;
+            }
+
+            update(deltaTime) {
+                const angle = Math.atan2(this.game.player.y - this.y, this.game.player.x - this.x);
+                this.x += Math.cos(angle) * this.speed * deltaTime;
+                this.y += Math.sin(angle) * this.speed * deltaTime;
+            }
+
+            draw(ctx) {
+                ctx.fillStyle = 'red';
+                ctx.fillRect(this.x, this.y, this.width, this.height);
+
+                ctx.fillStyle = "red";
+                ctx.fillRect(this.x - (this.width), this.y - this.height - 5, this.width * 2, 5)
+                ctx.fillStyle = "green";
+                ctx.fillRect(this.x - (this.width), this.y - this.height - 5, (this.health / this.maxHealth) * this.width * 2, 5)
+            }
+
+            takeDamage(damage) {
+                this.health -= damage;
+                if (this.health <= 0) {
+                    this.health = 0;
+                    this.die();
+                }
+            }
+
+            die() {
+                this.game.player.money += this.moneyDrop;
+                this.game.score += 100;
+                this.game.zombies.splice(this.game.zombies.indexOf(this), 1);
+            }
+
+            isCollidingWith(otherObject) {
+                return checkCollision(this, otherObject);
+            }
+
+            attack() {
+                this.game.player.takeDamage(this.attackDamage);
+            }
+        }
+
+        class Bullet {
+            constructor(x, y, angle, speed, damage) {
+                this.x = x;
+                this.y = y;
+                this.angle = angle;
+                this.speed = speed;
+                this.damage = damage;
+                this.radius = 5;
+            }
+
+            update(deltaTime) {
+                this.x += Math.cos(this.angle) * this.speed * deltaTime;
+                this.y += Math.sin(this.angle) * this.speed * deltaTime;
+            }
+
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = 'yellow';
+                ctx.fill();
+                ctx.closePath();
+            }
+        }
+
+        class Game {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.player = null;
+                this.zombies = [];
+                this.bullets = [];
+                this.score = 0;
+                this.wave = 1;
+                this.gameRunning = false;
+                this.lastTime = 0;
+                this.keys = {};
+                this.menuScreen = document.getElementById('menuScreen');
+                this.gameOverScreen = document.getElementById('gameOverScreen');
+                this.upgradeScreen = document.getElementById('upgradeScreen');
+                this.finalScoreDisplay = document.getElementById('finalScore');
+                this.healthBarFill = document.getElementById("healthBarFill");
+                this.scoreValueDisplay = document.getElementById("scoreValue");
+                this.waveValueDisplay = document.getElementById("waveValue");
+
+                this.upgradeDamageButton = document.getElementById("upgradeDamage");
+                this.upgradeSpeedButton = document.getElementById("upgradeSpeed");
+                this.continueButton = document.getElementById("continueButton");
+                this.startButton = document.getElementById("startButton");
+                this.restartButton = document.getElementById("restartButton");
+                this.menuButton = document.getElementById("menuButton");
+
+                this.upgradeDamageCost = 50;
+                this.upgradeSpeedCost = 75;
+            }
+
+            init() {
+                this.player = new Player(this.canvas.width / 2, this.canvas.height / 2, 0.2, this);
+                this.zombies = [];
+                this.bullets = [];
+                this.score = 0;
+                this.wave = 1;
+                this.gameRunning = false;
+                this.lastTime = 0;
+                this.player.money = 0;
+                this.player.baseDamage = 10;
+                this.player.speed = 0.2;
+                this.player.health = this.player.maxHealth;
+                this.updateHUD();
+            }
+
+            start() {
+                this.gameRunning = true;
+                this.menuScreen.style.display = 'none';
+                this.gameOverScreen.style.display = 'none';
+                this.upgradeScreen.style.display = 'none';
+                this.init();
+                this.spawnWave();
+                requestAnimationFrame(this.update.bind(this));
+            }
+
+            end() {
+                this.gameRunning = false;
+                this.finalScoreDisplay.textContent = `Score: ${this.score}`;
+                this.gameOverScreen.style.display = 'flex';
+            }
+
+            update(time) {
+                if (!this.gameRunning) return;
+
+                const deltaTime = (time - this.lastTime) / 1000;
+                this.lastTime = time;
+
+                this.player.update(deltaTime);
+
+                for (let i = 0; i < this.zombies.length; i++) {
+                    this.zombies[i].update(deltaTime);
+
+                    if (this.zombies[i].isCollidingWith(this.player)) {
+                        this.zombies[i].attack();
+                        this.updateHealthBar();
+
+                        if (this.player.health <= 0) {
+                            this.end();
+                            break;
+                        }
+                    }
+                }
+
+                for (let i = 0; i < this.bullets.length; i++) {
+                    this.bullets[i].update(deltaTime);
+
+                    if (this.bullets[i].x < 0 || this.bullets[i].x > this.canvas.width || this.bullets[i].y < 0 || this.bullets[i].y > this.canvas.height) {
+                        this.bullets.splice(i, 1);
+                        i--;
+                    }
+                }
+
+                for (let i = 0; i < this.bullets.length; i++) {
+                    for (let j = 0; j < this.zombies.length; j++) {
+                        if (this.zombies[j].isCollidingWith(this.bullets[i])) {
+                            this.zombies[j].takeDamage(this.bullets[i].damage);
+                            this.bullets.splice(i, 1);
+                            i--;
+                            break;
+                        }
+                    }
+                }
+
+                if (this.zombies.length === 0) {
+                    this.wave++;
+                    this.gameRunning = false;
+                    this.upgradeScreen.style.display = "flex";
+                }
+
+                this.draw();
+                requestAnimationFrame(this.update.bind(this));
+            }
+
+            draw() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                this.player.draw(this.ctx);
+
+                for (let i = 0; i < this.zombies.length; i++) {
+                    this.zombies[i].draw(this.ctx);
+                }
+
+                for (let i = 0; i < this.bullets.length; i++) {
+                    this.bullets[i].draw(this.ctx);
+                }
+                this.updateHUD();
+            }
+
+            spawnZombie() {
+                const side = Math.floor(Math.random() * 4);
+                let x, y;
+
+                switch (side) {
+                    case 0:
+                        x = Math.random() * this.canvas.width;
+                        y = -20;
+                        break;
+                    case 1:
+                        x = this.canvas.width + 20;
+                        y = Math.random() * this.canvas.height;
+                        break;
+                    case 2:
+                        x = Math.random() * this.canvas.width;
+                        y = this.canvas.height + 20;
+                        break;
+                    case 3:
+                        x = -20;
+                        y = Math.random() * this.canvas.height;
+                        break;
+                }
+
+                const speed = 0.03 + (this.wave * 0.005);
+                const health = 20 + (this.wave * 3);
+                this.zombies.push(new Zombie(x, y, speed, health, this));
+            }
+
+            spawnWave() {
+                const zombieCount = 3 + this.wave * 1;
+                for (let i = 0; i < zombieCount; i++) {
+                    this.spawnZombie();
+                }
+            }
+            updateHUD() {
+                this.scoreValueDisplay.textContent = this.score;
+                this.waveValueDisplay.textContent = this.wave;
+            }
+
+            updateHealthBar() {
+                let percentage = (this.player.health / this.player.maxHealth) * 100;
+                this.healthBarFill.style.width = percentage + "%";
+            }
+            setupEventListeners(){
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.key.toLowerCase()] = true;
+                    if (e.key === " " && this.gameRunning) {
+                        this.player.shoot();
+                    }
+                });
+
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.key.toLowerCase()] = false;
+                });
+
+                this.startButton.addEventListener('click', () => this.start());
+                this.restartButton.addEventListener('click', () => this.start());
+                this.menuButton.addEventListener('click', () => {
+                    this.menuScreen.style.display = 'flex';
+                    this.gameOverScreen.style.display = 'none';
+                    this.gameRunning = false;
+                });
+
+                this.continueButton.addEventListener('click', () => {
+                    this.upgradeScreen.style.display = 'none';
+                    this.gameRunning = true;
+                    requestAnimationFrame(this.update.bind(this));
+                    this.spawnWave();
+                });
+
+                this.upgradeDamageButton.addEventListener('click', () => {
+                    if (this.player.money >= this.upgradeDamageCost) {
+                        this.player.money -= this.upgradeDamageCost;
+                        this.player.baseDamage += 10;
+                        this.upgradeDamageCost += 50;
+                        this.upgradeDamageButton.textContent = `Damage + 10 (${this.upgradeDamageCost} Money)`;
+                        console.log("Damage UP!");
+                        this.updateHUD();
+                    }
+                });
+
+                this.upgradeSpeedButton.addEventListener('click', () => {
+                    if (this.player.money >= this.upgradeSpeedCost) {
+                        this.player.money -= this.upgradeSpeedCost;
+                        this.player.speed += 0.05;
+                        this.upgradeSpeedCost += 75;
+                        this.upgradeSpeedButton.textContent = `Speed + 0.05 (${this.upgradeSpeedCost} Money)`;
+                        console.log("Speed UP!");
+                        this.updateHUD();
+                    }
+                });
+            }
+        }
+
+        window.onload = () => {
+            const game = new Game('gameCanvas');
+            game.setupEventListeners();
+        };
+    </script>
+</body>
+</html>

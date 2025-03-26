@@ -1,31 +1,10 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>BigCode Output</title>
-  <style>
-    body { background-color: #36393F; color: #DCDDDE; font-family: sans-serif; margin: 0; padding: 10px; }
-    a { color: #7289da; text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    strong { font-weight: bold; }
-    em { font-style: italic; }
-    u { text-decoration: underline; }
-    s { text-decoration: line-through; }
-    code { background-color: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 3px; font-size: 90%; font-family: monospace; }
-    pre { background-color: rgba(255,255,255,0.07); padding: 10px; border-radius: 5px; overflow-x: auto; }
-  </style>
-</head>
-<body>
-  <h1>BigCode Final Output</h1>
-  <p>This is the final HTML code snippet produced for your request:</p>
-  <pre><code>html
-&lt;!DOCTYPE html&gt;
-&lt;html lang="en"&gt;
-&lt;head&gt;
-    &lt;meta charset="UTF-8"&gt;
-    &lt;meta name="viewport" content="width=device-width, initial-scale=1.0"&gt;
-    &lt;title&gt;Zombie Apocalypse&lt;/title&gt;
-    &lt;style&gt;
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Apocalypse</title>
+    <style>
         body {
             background-color: #222;
             overflow: hidden;
@@ -59,14 +38,14 @@
             height: 20px;
             width: 100px;
         }
-    &lt;/style&gt;
-&lt;/head&gt;
-&lt;body&gt;
-    &lt;div id="score"&gt;Score: 0&lt;/div&gt;
-    &lt;div id="healthBar"&gt;Health: &lt;div id="healthBarInner"&gt;&lt;/div&gt;&lt;/div&gt;
-    &lt;canvas id="gameCanvas" width="1280" height="720"&gt;&lt;/canvas&gt;
+    </style>
+</head>
+<body>
+    <div id="score">Score: 0</div>
+    <div id="healthBar">Health: <div id="healthBarInner"></div></div>
+    <canvas id="gameCanvas" width="1280" height="720"></canvas>
 
-    &lt;script&gt;
+    <script>
         const canvas = document.getElementById("gameCanvas");
         const ctx = canvas.getContext("2d");
 
@@ -90,7 +69,7 @@
             gameState = "running";
             zombieSpawnTimer = 0;
 
-            for (let i = 0; i &lt; 5; i++) {
+            for (let i = 0; i < 5; i++) {
                 spawnZombies(0);
             }
         }
@@ -136,15 +115,15 @@
             }
         }
 
-        document.addEventListener("keydown", (event) =&gt; {
+        document.addEventListener("keydown", (event) => {
             keys[event.key] = true;
         });
 
-        document.addEventListener("keyup", (event) =&gt; {
+        document.addEventListener("keyup", (event) => {
             keys[event.key] = false;
         });
 
-        canvas.addEventListener("mousemove", (event) =&gt; {
+        canvas.addEventListener("mousemove", (event) => {
             const rect = canvas.getBoundingClientRect();
             const mouseX = event.clientX - rect.left;
             const mouseY = event.clientY - rect.top;
@@ -185,21 +164,21 @@
             if (keys["a"] || keys["ArrowLeft"]) dx -= 1;
             if (keys["d"] || keys["ArrowRight"]) dx += 1;
 
-            const magnitude = Math.sqrt(dx <em> dx + dy </em> dy);
-            if (magnitude &gt; 0) {
+            const magnitude = Math.sqrt(dx  dx + dy  dy);
+            if (magnitude > 0) {
                 dx /= magnitude;
                 dy /= magnitude;
             }
 
-            player.x += dx <em> player.speed </em> deltaTime;
-            player.y += dy <em> player.speed </em> deltaTime;
+            player.x += dx  player.speed  deltaTime;
+            player.y += dy  player.speed  deltaTime;
 
             player.x = Math.max(player.width / 2, Math.min(player.x, canvas.width - player.width / 2));
             player.y = Math.max(player.height / 2, Math.min(player.y, canvas.height - player.height / 2));
 
             if (player.invulnerable) {
                 player.invulnerableTimer += deltaTime;
-                if (player.invulnerableTimer &gt;= player.invulnerableDuration) {
+                if (player.invulnerableTimer >= player.invulnerableDuration) {
                     player.invulnerable = false;
                     player.invulnerableTimer = 0;
                 }
@@ -266,55 +245,55 @@
 
         function spawnZombies(deltaTime) {
             zombieSpawnTimer += deltaTime;
-            if (zombieSpawnTimer &gt;= zombieSpawnInterval) {
+            if (zombieSpawnTimer >= zombieSpawnInterval) {
                 zombieSpawnTimer -= zombieSpawnInterval;
 
-                let side = Math.floor(Math.random() <em> 4);
+                let side = Math.floor(Math.random()  4);
                 let x, y;
 
                 switch (side) {
                     case 0:
-                        x = Math.random() </em> canvas.width;
+                        x = Math.random()  canvas.width;
                         y = -50;
                         break;
                     case 1:
                         x = canvas.width + 50;
-                        y = Math.random() <em> canvas.height;
+                        y = Math.random()  canvas.height;
                         break;
                     case 2:
-                        x = Math.random() </em> canvas.width;
+                        x = Math.random()  canvas.width;
                         y = canvas.height + 50;
                         break;
                     case 3:
                         x = -50;
-                        y = Math.random() <em> canvas.height;
+                        y = Math.random()  canvas.height;
                         break;
                 }
 
                 const zombieTypes = ["basic", "fast", "tank"];
-                const randomType = zombieTypes[Math.floor(Math.random() </em> zombieTypes.length)];
+                const randomType = zombieTypes[Math.floor(Math.random()  zombieTypes.length)];
                 zombies.push(createZombie(x, y, randomType));
             }
         }
 
         function updateZombies(deltaTime) {
-            for (let i = 0; i &lt; zombies.length; i++) {
+            for (let i = 0; i < zombies.length; i++) {
                 const zombie = zombies[i];
 
                 const dx = player.x - zombie.x;
                 const dy = player.y - zombie.y;
-                const distance = Math.sqrt(dx <em> dx + dy </em> dy);
+                const distance = Math.sqrt(dx  dx + dy  dy);
 
                 const vx = dx / distance;
                 const vy = dy / distance;
 
-                zombie.x += vx <em> zombie.speed </em> deltaTime;
-                zombie.y += vy <em> zombie.speed </em> deltaTime;
+                zombie.x += vx  zombie.speed  deltaTime;
+                zombie.y += vy  zombie.speed  deltaTime;
             }
         }
 
         function renderZombies() {
-            for (let i = 0; i &lt; zombies.length; i++) {
+            for (let i = 0; i < zombies.length; i++) {
                 const zombie = zombies[i];
                 ctx.save();
                 ctx.translate(zombie.x, zombie.y);
@@ -345,7 +324,7 @@
             if (gameState !== "running") return;
 
             const now = performance.now();
-            if (now - player.weapon.lastFired <em> 1000 &gt;= player.weapon.fireRate </em> 1000) {
+            if (now - player.weapon.lastFired  1000 >= player.weapon.fireRate  1000) {
                 player.weapon.lastFired = now / 1000;
 
                 const rect = canvas.getBoundingClientRect();
@@ -358,18 +337,18 @@
         }
 
         function updateBullets(deltaTime) {
-            for (let i = 0; i &lt; bullets.length; i++) {
+            for (let i = 0; i < bullets.length; i++) {
                 const bullet = bullets[i];
 
-                const dx = Math.cos(bullet.angle) <em> bullet.speed </em> deltaTime;
-                const dy = Math.sin(bullet.angle) <em> bullet.speed </em> deltaTime;
+                const dx = Math.cos(bullet.angle)  bullet.speed  deltaTime;
+                const dy = Math.sin(bullet.angle)  bullet.speed  deltaTime;
 
                 bullet.x += dx;
                 bullet.y += dy;
 
-                bullet.distance += Math.sqrt(dx <em> dx + dy </em> dy);
+                bullet.distance += Math.sqrt(dx  dx + dy  dy);
 
-                if (bullet.x &lt; 0 || bullet.x &gt; canvas.width || bullet.y &lt; 0 || bullet.y &gt; canvas.height || bullet.distance &gt; bullet.maxDistance) {
+                if (bullet.x < 0 || bullet.x > canvas.width || bullet.y < 0 || bullet.y > canvas.height || bullet.distance > bullet.maxDistance) {
                     bullets.splice(i, 1);
                     i--;
                 }
@@ -378,28 +357,28 @@
 
         function renderBullets() {
             ctx.fillStyle = "yellow";
-            for (let i = 0; i &lt; bullets.length; i++) {
+            for (let i = 0; i < bullets.length; i++) {
                 const bullet = bullets[i];
                 ctx.beginPath();
-                ctx.arc(bullet.x, bullet.y, 4, 0, Math.PI <em> 2);
+                ctx.arc(bullet.x, bullet.y, 4, 0, Math.PI  2);
                 ctx.fill();
             }
         }
 
         function checkAABBCollision(rect1, rect2) {
             return (
-                rect1.x - rect1.width / 2 &lt; rect2.x + rect2.width / 2 &amp;&amp;
-                rect1.x + rect1.width / 2 &gt; rect2.x - rect2.width / 2 &amp;&amp;
-                rect1.y - rect1.height / 2 &lt; rect2.y + rect2.height / 2 &amp;&amp;
-                rect1.y + rect1.height / 2 &gt; rect2.y - rect2.width / 2
+                rect1.x - rect1.width / 2 < rect2.x + rect2.width / 2 &&
+                rect1.x + rect1.width / 2 > rect2.x - rect2.width / 2 &&
+                rect1.y - rect1.height / 2 < rect2.y + rect2.height / 2 &&
+                rect1.y + rect1.height / 2 > rect2.y - rect2.width / 2
             );
         }
 
         function checkCollisions() {
-            for (let i = 0; i &lt; bullets.length; i++) {
+            for (let i = 0; i < bullets.length; i++) {
                 const bullet = bullets[i];
 
-                for (let j = 0; j &lt; zombies.length; j++) {
+                for (let j = 0; j < zombies.length; j++) {
                     const zombie = zombies[j];
 
                     if (checkAABBCollision(bullet, zombie)) {
@@ -408,7 +387,7 @@
                         i--;
                         break;
 
-                        if (zombie.health &lt;= 0) {
+                        if (zombie.health <= 0) {
                             zombies.splice(j, 1);
                             j--;
                             score += 10;
@@ -422,17 +401,17 @@
         function checkPlayerCollision() {
             if (player.invulnerable) return;
 
-            for (let i = 0; i &lt; zombies.length; i++) {
+            for (let i = 0; i < zombies.length; i++) {
                 const zombie = zombies[i];
 
                 if (checkAABBCollision(player, zombie)) {
                     player.health -= zombie.damage;
                     player.invulnerable = true;
 
-                    document.getElementById("healthBarInner").style.width = (player.health / player.maxHealth) </em> 100 + "%";
+                    document.getElementById("healthBarInner").style.width = (player.health / player.maxHealth)  100 + "%";
 
 
-                    if (player.health &lt;= 0) {
+                    if (player.health <= 0) {
                         gameState = "gameover";
                     }
                 }
@@ -467,7 +446,7 @@
             ctx.textAlign = "left";
         }
 
-        canvas.addEventListener("mousedown", () =&gt; {
+        canvas.addEventListener("mousedown", () => {
             if (gameState === "gameover") {
                 init();
             }
@@ -475,9 +454,6 @@
 
         init();
         startGameLoop();
-    &lt;/script&gt;
-&lt;/body&gt;
-&lt;/html&gt;
-</code></pre>
+    </script>
 </body>
 </html>

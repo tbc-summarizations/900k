@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Apocalypse</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #222;
+            font-family: sans-serif;
+            color: #eee;
+        }
+
+        #gameCanvas {
+            background-color: #444;
+            display: block;
+            margin: 20px auto;
+            border: 1px solid #666;
+        }
+
+        #upgradeMenu {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            color: #fff;
+            z-index: 10;
+        }
+
+        .upgradeOption {
+            padding: 10px 20px;
+            background-color: #555;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            margin: 5px;
+            cursor: pointer;
+        }
+
+        .upgradeOption:hover {
+            background-color: #777;
+        }
+
+        #upgradeMenu h2 {
+            margin-bottom: 15px;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+    <div id="upgradeMenu" class="hidden"></div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        let gameState = 'title';
+        let lastTime = 0;
+
+        let player;
+        let zombies = [];
+        let bullets = [];
+        let score = 0;
+        let gameDifficulty = 1;
+        let upgrades;
+        let zombieSpawnInterval = 1000;
+        let lastZombieSpawn = 0;
+        let lastShotTime = 0;
+
+        let keys = {};
+        let mouseX = 0;
+        let mouseY = 0;
+
+        let sounds = {};
+
+        const gameConfig = {
+          baseZombieSpeed : 1,
+          basePlayerSpeed : 5,
+          baseFireRate : 200
+        }
+
+        function init() {
+          loadUpgrades('assets/data/upgrades.json');
+          attachInputListeners();
+          loadSounds();
+          console.log("Game Initialized");
+        }
+
+        function gameLoop(timestamp) {
+            let deltaTime = timestamp - lastTime;
+            lastTime = timestamp;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            switch (gameState) {
+                case 'title':
+                    drawTitleScreen();
+                    break;
+                case 'playing':
+                    update(deltaTime);
+                    render();
+                    break;
+                case 'pause':
+                    drawPauseScreen();
+                    break;
+                case 'gameover':
+                    drawGameOverScreen();
+                    break;
+                case 'upgrade':
+                    break;
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        window.onload = function() {
+            init();
+            gameLoop();
+        };
+
+        function startGame() {
+            player = createPlayer(canvas.width / 2, canvas.height / 2);
+            zombies = [];
+            bullets = [];
+            score = 0;
+            gameDifficulty = 1;
+            zombieSpawnInterval = 1000;
+            lastZombieSpawn = 0;
+            lastShotTime = 0;
+            resetUpgrades();
+
+            gameState = 'playing';
+            console.log("Game Started");
+        }
+
+        function update(deltaTime) {
+            updatePlayer(deltaTime);
+            updateZombies(deltaTime);
+            updateBullets(deltaTime);
+            checkCollisions();
+            spawnZombies(deltaTime);
+            updateDifficulty(deltaTime);
+        }
+
+        function render() {
+            drawBackground();
+            drawPlayer();
+            drawZombies();
+            drawBullets();
+            drawUI();
+        }
+
+        function attachInputListeners() {
+            document.addEventListener('keydown', (event) => {
+                keys[event.key] = true;
+
+                if (event.code === 'Space') {
+                    if (gameState === 'title' || gameState === 'gameover') {
+                        startGame();
+                    } else if (gameState === 'pause'){
+                      gameState = 'playing';
+                    } else if (gameState === 'playing'){
+                      gameState = 'pause';
+                    }
+                }
+
+                if(event.key === 'u' && gameState === 'playing'){
+                  gameState = 'upgrade';
+                  openUpgradeMenu();
+                }
+            });
+
+            document.addEventListener('keyup', (event) => {
+                keys[event.key] = false;
+            });
+
+            document.addEventListener('mousemove', (event) => {
+              const rect = canvas.getBoundingClientRect();
+              mouseX = event.clientX - rect.left;
+              mouseY = event.clientY - rect.top;
+            });
+
+            document.addEventListener('mousedown', () => {
+              shoot();
+            });
+        }
+
+        function drawTitleScreen() {
+            ctx.fillStyle = '#111';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#EEE';
+            ctx.font = '64px serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Zombie Apocalypse', canvas.width / 2, canvas.height / 2 - 50);
+
+            ctx.font = '28px serif';
+            ctx.fillText('Press Space to Start', canvas.width / 2, canvas.height / 2 + 40);
+        }
+
+        function drawGameOverScreen() {
+            ctx.fillStyle = '#111';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#EEE';
+            ctx.font = '64px serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Game Over', canvas.width / 2, canvas.height / 2 - 50);
+
+            ctx.font = '28px serif';
+            ctx.fillText(`Score: ${score}`, canvas.width / 2, canvas.height / 2);
+            ctx.fillText('Press Space to Return to Menu', canvas.width / 2, canvas.height / 2 + 40);
+        }
+
+        function drawPauseScreen() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#EEE';
+            ctx.font = '48px serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Paused', canvas.width / 2, canvas.height / 2 - 30);
+            ctx.font = '24px serif';
+            ctx.fillText('Press Space to Continue', canvas.width / 2, canvas.height / 2 + 20);
+        }
+
+        function createPlayer(x, y) {
+            return {
+                x: x,
+                y: y,
+                width: 32,
+                height: 32,
+                speed: gameConfig.basePlayerSpeed,
+                angle: 0,
+                health: 100
+            };
+        }
+
+        function updatePlayer(deltaTime) {
+            let dx = 0;
+            let dy = 0;
+            if (keys['w']) dy = -1;
+            if (keys['s']) dy = 1;
+            if (keys['a']) dx = -1;
+            if (keys['d']) dx = 1;
+
+            const magnitude = Math.sqrt(dx * dx + dy * dy);
+            if (magnitude > 0) {
+                dx /= magnitude;
+                dy /= magnitude;
+            }
+
+            player.x += dx * player.speed * deltaTime / 16;
+            player.y += dy * player.speed * deltaTime / 16;
+
+            player.x = Math.max(0, Math.min(player.x, canvas.width - player.width));
+            player.y = Math.max(0, Math.min(player.y, canvas.height - player.height));
+
+            player.angle = Math.atan2(mouseY - player.y - player.height/2, mouseX - player.x - player.width/2);
+        }
+
+        function drawPlayer() {
+            ctx.save();
+
+            ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
+            ctx.rotate(player.angle);
+
+            ctx.fillStyle = 'blue';
+            ctx.fillRect(-player.width/2, -player.height/2, player.width, player.height);
+
+            ctx.restore();
+        }
+
+        function createZombie(x, y) {
+            return {
+                x: x,
+                y: y,
+                width: 24,
+                height: 24,
+                speed: gameConfig.baseZombieSpeed + (gameDifficulty * 0.1),
+                health: 2 + (gameDifficulty * 0.2),
+                damage: 10,
+                isAlive: true
+            };
+        }
+
+        function spawnZombies(deltaTime) {
+            lastZombieSpawn += deltaTime;
+            if (lastZombieSpawn > zombieSpawnInterval) {
+                lastZombieSpawn = 0;
+                let side = Math.floor(Math.random() * 4);
+                let x, y;
+                switch (side) {
+                    case 0:
+                        x = Math.random() * canvas.width;
+                        y = -20;
+                        break;
+                    case 1:
+                        x = canvas.width + 20;
+                        y = Math.random() * canvas.height;
+                        break;
+                    case 2:
+                        x = Math.random() * canvas.width;
+                        y = canvas.height + 20;
+                        break;
+                    case 3:
+                        x = -20;
+                        y = Math.random() * canvas.height;
+                        break;
+                }
+                zombies.push(createZombie(x, y));
+            }
+        }
+
+        function updateZombies(deltaTime) {
+            for (let i = 0; i < zombies.length; i++) {
+                if(!zombies[i].isAlive) continue;
+
+                let angle = Math.atan2(player.y - zombies[i].y, player.x - zombies[i].x);
+                zombies[i].x += Math.cos(angle) * zombies[i].speed * deltaTime / 16;
+                zombies[i].y += Math.sin(angle) * zombies[i].speed * deltaTime / 16;
+            }
+
+            zombies = zombies.filter(zombie => zombie.isAlive);
+        }
+
+        function drawZombies() {
+            for (let i = 0; i < zombies.length; i++) {
+                if(!zombies[i].isAlive) continue;
+                ctx.fillStyle = 'red';
+                ctx.fillRect(zombies[i].x, zombies[i].y, zombies[i].width, zombies[i].height);
+            }
+        }
+
+        function createBullet(x, y, angle, damage) {
+            return {
+                x: x,
+                y: y,
+                width: 8,
+                height: 8,
+                speed: 15,
+                angle: angle,
+                damage: damage
+            };
+        }
+
+        function shoot() {
+            if (Date.now() - lastShotTime > upgrades.fireRate.value) {
+                lastShotTime = Date.now();
+                bullets.push(createBullet(player.x + player.width/2, player.y + player.height/2, player.angle, upgrades.damage.value));
+                playSound("gunshot");
+            }
+        }
+
+        function updateBullets(deltaTime) {
+            for (let i = 0; i < bullets.length; i++) {
+                bullets[i].x += Math.cos(bullets[i].angle) * bullets[i].speed * deltaTime / 16;
+                bullets[i].y += Math.sin(bullets[i].angle) * bullets[i].speed * deltaTime / 16;
+
+                if (bullets[i].x < 0 || bullets[i].x > canvas.width || bullets[i].y < 0 || bullets[i].y > canvas.height) {
+                    bullets.splice(i, 1);
+                    i--;
+                }
+            }
+        }
+
+        function drawBullets() {
+            for (let i = 0; i < bullets.length; i++) {
+                ctx.fillStyle = 'yellow';
+                ctx.fillRect(bullets[i].x, bullets[i].y, bullets[i].width, bullets[i].height);
+            }
+        }
+
+        function checkCollisions() {
+            for (let i = 0; i < bullets.length; i++) {
+                for (let j = 0; j < zombies.length; j++) {
+                    if(!zombies[j].isAlive) continue;
+
+                    if (isColliding(bullets[i], zombies[j])) {
+                        zombies[j].health -= bullets[i].damage;
+                        bullets.splice(i, 1);
+                        i--;
+                        if (zombies[j].health <= 0) {
+                            zombies[j].isAlive = false;
+                            score += 10;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            for (let i = 0; i < zombies.length; i++) {
+                 if(!zombies[i].isAlive) continue;
+                if (isColliding(player, zombies[i])) {
+                    player.health -= zombies[i].damage;
+                    zombies[i].isAlive = false;
+                    if (player.health <= 0) {
+                        gameState = 'gameover';
+                    }
+                }
+            }
+        }
+
+        function isColliding(rect1, rect2) {
+            return (
+                rect1.x < rect2.x + rect2.width &&
+                rect1.x + rect1.width > rect2.x &&
+                rect1.y < rect2.y + rect2.height &&
+                rect1.y + rect1.height > rect2.y
+            );
+        }
+
+        function loadUpgrades(url) {
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    upgrades = data.reduce((obj, upgrade) => {
+                        obj[upgrade.name] = upgrade;
+                        return obj;
+                    }, {});
+                })
+                .catch(error => console.error('Error loading upgrades:', error));
+        }
+
+        function resetUpgrades(){
+          upgrades = {
+            "damage": {
+              "name": "damage",
+              "displayName": "Damage",
+              "baseValue": 1,
+              "costIncrease": 50,
+              "cost": 50,
+              "maxValue": 10,
+              "value": 1
+            },
+            "fireRate": {
+              "name": "fireRate",
+              "displayName": "Fire Rate",
+              "baseValue": 500,
+              "costIncrease": 75,
+              "cost": 75,
+              "minValue": 100,
+              "value": 500
+            },
+            "speed": {
+              "name": "speed",
+              "displayName": "Speed",
+              "baseValue": 5,
+              "costIncrease": 100,
+              "cost": 100,
+              "maxValue": 15,
+              "value": 5
+            }
+          };
+        }
+
+        function drawUI() {
+            ctx.fillStyle = '#EEE';
+            ctx.font = '16px sans-serif';
+            ctx.textAlign = 'left';
+            ctx.fillText(`Score: ${score}`, 10, 20);
+            ctx.fillText(`Health: ${player.health}`, 10, 40);
+            ctx.fillText(`Damage: ${upgrades.damage.value}`, 10, 60);
+            ctx.fillText(`Speed: ${player.speed}`, 10, 80);
+            ctx.fillText(`Difficulty: ${gameDifficulty.toFixed(2)}`, 10, 100);
+        }
+
+        function openUpgradeMenu() {
+            const upgradeMenu = document.getElementById('upgradeMenu');
+            upgradeMenu.innerHTML = '';
+
+            const title = document.createElement('h2');
+            title.textContent = 'Upgrade Menu';
+            upgradeMenu.appendChild(title);
+
+            for (const key in upgrades) {
+                const upgrade = upgrades[key];
+                const button = document.createElement('button');
+                button.classList.add('upgradeOption');
+                button.textContent = `${upgrade.displayName} (${upgrade.value}) - Cost: ${upgrade.cost}`;
+                button.addEventListener('click', () => {
+                    if (score >= upgrade.cost) {
+                        score -= upgrade.cost;
+
+                        let newValue = upgrade.name === 'fireRate' ? upgrade.value - 50 : upgrade.value + (upgrade.name === 'speed' ? 1 : 1);
+
+                        if(upgrade.name === 'fireRate' && newValue < upgrade.minValue){
+                          newValue = upgrade.minValue;
+                        }
+
+                        if(upgrade.maxValue && newValue > upgrade.maxValue){
+                          newValue = upgrade.maxValue;
+                        }
+
+                        upgrade.value = newValue;
+                        upgrade.cost += upgrade.costIncrease;
+
+                        if(upgrade.name === 'speed'){
+                          player.speed = upgrade.value;
+                        }
+
+                        playSound("upgrade");
+
+                        button.textContent = `${upgrade.displayName} (${upgrade.value}) - Cost: ${upgrade.cost}`;
+                    } else {
+                        alert('Not enough score!');
+                    }
+                });
+                upgradeMenu.appendChild(button);
+            }
+
+            upgradeMenu.style.display = 'flex';
+
+            const closeButton = document.createElement("button");
+            closeButton.textContent = "Close";
+            closeButton.classList.add("upgradeOption");
+
+            closeButton.addEventListener("click", () => {
+                closeUpgradeMenu();
+            });
+
+            upgradeMenu.appendChild(closeButton);
+        }
+
+        function closeUpgradeMenu() {
+            const upgradeMenu = document.getElementById('upgradeMenu');
+            upgradeMenu.style.display = 'none';
+            gameState = 'playing';
+        }
+
+        function updateDifficulty(deltaTime) {
+            gameDifficulty += 0.0001 * deltaTime;
+            zombieSpawnInterval = Math.max(200, zombieSpawnInterval - (0.001*deltaTime));
+        }
+
+        function drawBackground() {
+            ctx.fillStyle = '#333';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function loadSounds(){
+          sounds["gunshot"] = new Audio('assets/sound/gunshot.wav');
+          sounds["zombie"] = new Audio('assets/sound/zombie_groan.wav');
+          sounds["upgrade"] = new Audio('assets/sound/upgrade_sound.wav');
+        }
+
+        function playSound(soundName) {
+          if (sounds[soundName]) {
+              sounds[soundName].play();
+          }
+        }
+    </script>
+    <script>
+        // Mock upgrade data (since we are not using external files)
+        const upgradeData = [
+          {
+            "name": "damage",
+            "displayName": "Damage",
+            "baseValue": 1,
+            "costIncrease": 50,
+            "cost": 50,
+            "maxValue": 10,
+            "value": 1
+          },
+          {
+            "name": "fireRate",
+            "displayName": "Fire Rate",
+            "baseValue": 500,
+            "costIncrease": 75,
+            "cost": 75,
+            "minValue": 100,
+            "value": 500
+          },
+          {
+            "name": "speed",
+            "displayName": "Speed",
+            "baseValue": 5,
+            "costIncrease": 100,
+            "cost": 100,
+            "maxValue": 15,
+            "value": 5
+          }
+        ];
+
+        //Override the fetch based loadUpgrades function to use mock data.
+        function loadUpgrades(url) {
+            upgrades = upgradeData.reduce((obj, upgrade) => {
+                obj[upgrade.name] = upgrade;
+                return obj;
+            }, {});
+        }
+
+        // Mock sound loading and play functions (since we are not including assets)
+        function loadSounds(){
+          sounds["gunshot"] = {play: function(){console.log("Playing gunshot sound")}};
+          sounds["zombie"] = {play: function(){console.log("Playing zombie sound")}};
+          sounds["upgrade"] = {play: function(){console.log("Playing upgrade sound")}};
+        }
+
+        function playSound(soundName) {
+          if (sounds[soundName]) {
+              sounds[soundName].play();
+          }
+        }
+    </script>
+</body>
+</html>

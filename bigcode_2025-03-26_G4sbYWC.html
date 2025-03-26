@@ -1,0 +1,363 @@
+NOT html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clicker Game</title>
+    <style>
+        /* Basic styling */
+        body { font-family: sans-serif; }
+        #clickArea {
+            background-color: lightblue;
+            padding: 50px;
+            text-align: center;
+            font-size: 24px;
+            cursor: pointer;
+            margin-bottom: 20px;
+        }
+        #shop, #worlds, #rebirthUpgrades {
+            margin-top: 20px;
+            border: 1px solid #ccc;
+            padding: 10px;
+        }
+        .shop-item, .world-item, .rebirth-upgrade-item {
+            border: 1px solid #eee;
+            padding: 10px;
+            margin-bottom: 5px;
+        }
+        button {
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Clicker Game</h1>
+
+    <div id="clickArea">Click Here!</div>
+    <p>Gold: <span id="goldCount">0</span></p>
+    <p>Gold per second: <span id="goldPerSecond">0</span></p>
+
+    <div id="shop">
+        <h2>Shop</h2>
+        <div id="shopItems">
+            <!-- Shop items will be dynamically added here -->
+        </div>
+    </div>
+
+    <div id="worlds">
+        <h2>Worlds</h2>
+        <div id="worldList">
+            <!-- Worlds will be dynamically added here -->
+        </div>
+    </div>
+
+    <div id="rebirthUpgrades">
+        <h2>Rebirth Upgrades</h2>
+        <div id="rebirthUpgradesList">
+            <!-- Rebirth Upgrades will be dynamically added here -->
+        </div>
+        <p>Rebirth Points: <span id="rebirthPointsCount">0</span></p>
+        <button onclick="rebirth()">Rebirth</button>
+    </div>
+
+    <script>
+        let gold = 0;
+        let clickMultiplier = 1;
+        let permanentClickBonus = 0;
+        let totalGoldEarned = 0;
+        let goldPerSecond = 0;
+        let currentWorldMultiplier = 1;
+        let rebirthPoints = 0;
+
+        const goldCountElement = document.getElementById("goldCount");
+        const goldPerSecondElement = document.getElementById("goldPerSecond");
+        const clickArea = document.getElementById("clickArea");
+        const shopItemsDiv = document.getElementById("shopItems");
+        const worldListDiv = document.getElementById("worldList");
+        const rebirthUpgradesListDiv = document.getElementById("rebirthUpgradesList");
+        const rebirthPointsCountElement = document.getElementById("rebirthPointsCount");
+
+
+        function updateGoldDisplay() {
+            goldCountElement.textContent = Math.floor(gold);
+        }
+
+        function updateGoldPerSecondDisplay() {
+            goldPerSecondElement.textContent = goldPerSecond.toFixed(2);
+        }
+
+        function handleClick() {
+            const clickValue = clickMultiplier * (1 + permanentClickBonus) * currentWorldMultiplier;
+            gold += clickValue;
+            totalGoldEarned += clickValue;
+            updateGoldDisplay();
+        }
+
+        clickArea.addEventListener("click", handleClick);
+
+        function gameLoop() {
+            const goldToAdd = goldPerSecond / 10;
+            gold += goldToAdd;
+            totalGoldEarned += goldToAdd;
+            updateGoldDisplay();
+        }
+
+        setInterval(gameLoop, 100);
+
+
+        const shopItems = [
+            {
+                name: "Click Upgrade",
+                cost: 10,
+                description: "Increases gold per click by 1.",
+                effect: "increaseClickValue",
+                value: 1,
+                quantity: 0
+            },
+            {
+                name: "Miner",
+                cost: 100,
+                description: "Generates 5 gold per second.",
+                effect: "increaseIdleGeneration",
+                value: 5,
+                quantity: 0
+            }
+        ];
+
+        function calculateCost(baseCost, quantity) {
+            return Math.floor(baseCost * Math.pow(1.15, quantity));
+        }
+
+        function buyItem(index) {
+            const item = shopItems[index];
+            if (gold >= item.cost) {
+                gold -= item.cost;
+                updateGoldDisplay();
+                item.quantity++;
+
+                if (item.effect === "increaseClickValue") {
+                    clickMultiplier += item.value;
+                } else if (item.effect === "increaseIdleGeneration") {
+                    goldPerSecond += item.value;
+                    updateGoldPerSecond();
+                }
+
+                item.cost = calculateCost(item.cost, item.quantity);
+                displayShop();
+            } else {
+                alert("Not enough gold!");
+            }
+        }
+
+        function displayShop() {
+            shopItemsDiv.innerHTML = "";
+            shopItems.forEach((item, index) => {
+                const itemDiv = document.createElement("div");
+                itemDiv.classList.add("shop-item");
+                itemDiv.innerHTML = `
+                    <h3>${item.name} (Owned: ${item.quantity})</h3>
+                    <p>${item.description}</p>
+                    <p>Cost: <span id="cost-${index}">${item.cost}</span> Gold</p>
+                    <button onclick="buyItem(${index})">Buy</button>
+                `;
+                shopItemsDiv.appendChild(itemDiv);
+            });
+        }
+
+
+        const worlds = [
+            {
+                name: "Overworld",
+                resourceMultiplier: 1,
+                unlockCost: 0,
+                isUnlocked: true
+            },
+            {
+                name: "The Nether",
+                resourceMultiplier: 2,
+                unlockCost: 1000,
+                isUnlocked: false
+            },
+            {
+                name: "The End",
+                resourceMultiplier: 5,
+                unlockCost: 5000,
+                isUnlocked: false
+            }
+        ];
+
+        function displayWorlds() {
+            worldListDiv.innerHTML = "";
+            worlds.forEach((world, index) => {
+                const worldDiv = document.createElement("div");
+                worldDiv.classList.add("world-item");
+                worldDiv.innerHTML = `
+                    <h3>${world.name}</h3>
+                    ${world.isUnlocked ? "<p>Unlocked!</p>" : `<p>Cost: ${world.unlockCost} Gold</p>
+                    <button onclick="unlockWorld(${index})" ${world.isUnlocked ? 'disabled' : ''}>Unlock</button>`}
+                `;
+                worldListDiv.appendChild(worldDiv);
+            });
+        }
+
+        function unlockWorld(index) {
+            const world = worlds[index];
+            if (!world.isUnlocked && gold >= world.unlockCost) {
+                gold -= world.unlockCost;
+                updateGoldDisplay();
+                world.isUnlocked = true;
+                applyWorldMultiplier(world.resourceMultiplier);
+                displayWorlds();
+            } else {
+                alert("Not enough gold or world already unlocked!");
+            }
+        }
+
+        function applyWorldMultiplier(multiplier) {
+            currentWorldMultiplier = multiplier;
+            updateGoldPerSecond();
+        }
+
+        function updateGoldPerSecond() {
+            let baseGoldPerSecond = 0;
+            shopItems.forEach(item => {
+                if (item.effect === "increaseIdleGeneration") {
+                    baseGoldPerSecond += item.value * item.quantity;
+                }
+            });
+            goldPerSecond = baseGoldPerSecond * currentWorldMultiplier;
+            updateGoldPerSecondDisplay();
+        }
+
+
+        function calculateRebirthPoints() {
+            return 1 + Math.floor(totalGoldEarned / 1000);
+        }
+
+        function rebirth() {
+            const points = calculateRebirthPoints();
+            rebirthPoints += points;
+            rebirthPointsCountElement.textContent = rebirthPoints;
+            alert(`Rebirthed! Earned ${points} Rebirth Points. Total: ${rebirthPoints}`);
+
+            gold = 0;
+            clickMultiplier = 1 + (permanentClickBonus * rebirthPoints);
+            currentWorldMultiplier = 1;
+            updateGoldDisplay();
+            goldPerSecond = 0;
+            updateGoldPerSecondDisplay();
+
+            shopItems.forEach(item => {
+                item.quantity = 0;
+                item.cost = item.initialCost || item.cost;
+            });
+
+            worlds.forEach(world => world.isUnlocked = (world.name === "Overworld"));
+
+            displayWorlds();
+            displayShop();
+            displayRebirthUpgrades();
+            saveGame();
+        }
+
+
+        const rebirthUpgrades = [
+            {
+                name: "Permanent Click Boost",
+                cost: 5,
+                description: "Increases base click multiplier by 0.2 per rebirth.",
+                effect: "permanentClickBoost",
+                value: 0.2
+            }
+        ];
+
+        function displayRebirthUpgrades() {
+            rebirthUpgradesListDiv.innerHTML = "";
+            rebirthUpgrades.forEach((upgrade, index) => {
+                const upgradeDiv = document.createElement("div");
+                upgradeDiv.classList.add("rebirth-upgrade-item");
+                upgradeDiv.innerHTML = `
+                    <h3>${upgrade.name}</h3>
+                    <p>${upgrade.description}</p>
+                    <p>Cost: ${upgrade.cost} Rebirth Points</p>
+                    <button onclick="buyRebirthUpgrade(${index})">Buy</button>
+                `;
+                rebirthUpgradesListDiv.appendChild(upgradeDiv);
+            });
+            rebirthPointsCountElement.textContent = rebirthPoints;
+        }
+
+
+        function buyRebirthUpgrade(index) {
+            const upgrade = rebirthUpgrades[index];
+            if (rebirthPoints >= upgrade.cost) {
+                rebirthPoints -= upgrade.cost;
+                rebirthPointsCountElement.textContent = rebirthPoints;
+
+                if (upgrade.effect === "permanentClickBoost") {
+                    permanentClickBonus += upgrade.value;
+                    clickMultiplier = 1 + (permanentClickBonus * rebirthPoints); // Re-calculate click multiplier
+                }
+                displayRebirthUpgrades();
+                saveGame();
+            } else {
+                alert("Not enough rebirth points!");
+            }
+        }
+
+
+        function saveGame() {
+            const gameState = {
+                gold: gold,
+                goldPerSecond: goldPerSecond,
+                clickMultiplier: clickMultiplier,
+                permanentClickBonus: permanentClickBonus,
+                totalGoldEarned: totalGoldEarned,
+                rebirthPoints: rebirthPoints,
+                worlds: worlds.map(world => ({ ...world })),
+                shopItems: shopItems.map(item => ({ ...item, initialCost: item.initialCost || item.cost })),
+                currentWorldMultiplier: currentWorldMultiplier,
+            };
+            localStorage.setItem('clickerGameState', JSON.stringify(gameState));
+        }
+
+        function loadGame() {
+            const savedState = localStorage.getItem('clickerGameState');
+            if (savedState) {
+                const gameState = JSON.parse(savedState);
+                gold = gameState.gold;
+                goldPerSecond = gameState.goldPerSecond;
+                clickMultiplier = gameState.clickMultiplier;
+                permanentClickBonus = gameState.permanentClickBonus;
+                totalGoldEarned = gameState.totalGoldEarned;
+                rebirthPoints = gameState.rebirthPoints;
+                worlds = gameState.worlds;
+                shopItems.forEach((item, index) => {
+                    Object.assign(item, gameState.shopItems[index]);
+                });
+                currentWorldMultiplier = gameState.currentWorldMultiplier;
+
+                updateGoldDisplay();
+                updateGoldPerSecondDisplay();
+                rebirthPointsCountElement.textContent = rebirthPoints;
+                displayWorlds();
+                displayShop();
+                displayRebirthUpgrades();
+            } else {
+                shopItems.forEach(item => {
+                    item.initialCost = item.cost;
+                });
+            }
+        }
+
+        window.onload = () => {
+            loadGame();
+            displayShop();
+            displayWorlds();
+            displayRebirthUpgrades();
+            setInterval(saveGame, 5000);
+        };
+    </script>
+</body>
+</html>

@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Clicker Game</title>
+    <style>
+        #gameContainer {
+            width: 90%;
+            max-width: 1200px;
+            margin: 20px auto;
+            font-family: sans-serif;
+        }
+
+        header, main, footer {
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            background-color: #f9f9f9;
+        }
+
+        main {
+            display: flex;
+            flex-wrap: wrap; /* Allow sections to wrap on smaller screens */
+        }
+
+        #clickArea {
+            flex: 1 1 300px; /* Grow, shrink, base width */
+            padding: 30px;
+            background-color: lightblue;
+            cursor: pointer;
+            text-align: center;
+            font-size: 1.2em;
+            border-radius: 5px;
+            user-select: none; /* Prevent text selection during rapid clicks */
+        }
+        #clickArea.clicked {
+            transform: scale(1.05);
+            transition: transform 0.1s ease-in-out;
+        }
+
+        #leftPanel, #rightPanel {
+            flex: 1 1 250px; /* Two columns that scale */
+            margin-left: 10px;
+            margin-right: 10px;
+        }
+
+        #shop, #upgrades, #worlds, #rebirth {
+            padding: 15px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            background-color: #fff;
+            border-radius: 5px;
+        }
+
+        .item {
+            margin-bottom: 10px;
+            padding: 10px;
+            border: 1px solid #eee;
+            background-color: #f2f2f2;
+            border-radius: 3px;
+            display: flex; /* Flexbox for better alignment */
+            justify-content: space-between;
+            align-items: center; /* Vertical alignment */
+        }
+
+        .item span {
+            margin-right: 10px;
+        }
+
+        .item button {
+            padding: 5px 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        .item button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            main {
+                flex-direction: column; /* Stack on smaller screens */
+            }
+
+            #leftPanel, #rightPanel {
+                margin-left: 0;
+                margin-right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <header>
+            <div id="scoreDisplay">Score: 0</div>
+            <div id="prestigeDisplay">Prestige: 0</div>
+        </header>
+
+        <main>
+            <div id="clickArea">Click Here!</div>
+
+            <aside id="leftPanel">
+                <section id="shop">
+                    <h3>Shop</h3>
+                </section>
+                <section id="upgrades">
+                    <h3>Upgrades</h3>
+                </section>
+            </aside>
+
+            <aside id="rightPanel">
+                <section id="worlds">
+                    <h3>Worlds</h3>
+                </section>
+                <section id="rebirth">
+                    <h3>Rebirth</h3>
+                </section>
+            </aside>
+        </main>
+
+        <footer>
+            <button id="saveButton">Save Game</button>
+            <button id="loadButton">Load Game</button>
+        </footer>
+    </div>
+
+    <script>
+        // ------------------- Game Data -------------------
+        let gameData = {
+            score: 0,
+            prestigePoints: 0,
+            currentWorld: 0,
+            clickMultiplier: 1,
+            passiveIncome: 0,
+            lastSave: Date.now()
+        };
+
+        // ------------------- DOM Element References -------------------
+        const scoreDisplay = document.getElementById("scoreDisplay");
+        const prestigeDisplay = document.getElementById("prestigeDisplay");
+        const clickArea = document.getElementById("clickArea");
+        const saveButton = document.getElementById("saveButton");
+        const loadButton = document.getElementById("loadButton");
+        const shop = document.getElementById("shop");
+        const upgradesDiv = document.getElementById("upgrades");
+        const worldsDiv = document.getElementById("worlds");
+        const rebirthDiv = document.getElementById("rebirth");
+
+        // ------------------- Shop Items -------------------
+        const shopItems = [
+            {
+                name: "Auto Clicker",
+                cost: 10,
+                baseCost: 10,
+                effect: 0.1,
+                type: "passive",
+                description: "Generates score passively.",
+                owned: 0,
+                unlockCondition: () => gameData.currentWorld >= 0,
+                purchase: function() {
+                    if (gameData.score >= this.cost) {
+                        gameData.score -= this.cost;
+                        gameData.passiveIncome += this.effect;
+                        this.owned++;
+                        this.cost = this.baseCost * Math.pow(1.15, this.owned);
+                        return true;
+                    }
+                    return false;
+                }
+            },
+            {
+                name: "Click Booster",
+                cost: 50,
+                baseCost: 50,
+                effect: 1,
+                type: "click",
+                description: "Increases score per click.",
+                owned: 0,
+                unlockCondition: () => gameData.currentWorld >= 0,
+                purchase: function() {
+                    if (gameData.score >= this.cost) {
+                        gameData.score -= this.cost;
+                        gameData.clickMultiplier += this.effect;
+                        this.owned++;
+                        this.cost = this.baseCost * Math.pow(1.15, this.owned);
+                        return true;
+                    }
+                    return false;
+                }
+            },
+            {
+              name: "World 2 AutoClicker",
+              cost: 500,
+              baseCost: 500,
+              effect: 1,
+              type: "passive",
+              description: "Generates score passively, but more!",
+              owned: 0,
+              unlockCondition: () => gameData.currentWorld >= 1,
+              purchase: function() {
+                  if (gameData.score >= this.cost) {
+                      gameData.score -= this.cost;
+                      gameData.passiveIncome += this.effect;
+                      this.owned++;
+                      this.cost = this.baseCost * Math.pow(1.15, this.owned);
+                      return true;
+                  }
+                  return false;
+              }
+          },
+        ];
+
+        // ------------------- Upgrades -------------------
+        const upgrades = [
+            {
+                name: "Better Clicks I",
+                cost: 100,
+                effect: 1,
+                type: "click_multiplier",
+                description: "Permanently increases score per click.",
+                owned: false,
+                unlockCondition: () => shopItems[1].owned >= 1 && gameData.currentWorld >= 0,
+                purchase: function() {
+                    if (gameData.score >= this.cost && !this.owned) {
+                        gameData.score -= this.cost;
+                        gameData.clickMultiplier += this.effect;
+                        this.owned = true;
+                        return true;
+                    }
+                    return false;
+                }
+            },
+            {
+                name: "Double Auto Clicker Speed",
+                cost: 500,
+                effect: 2,
+                type: "passive_speed",
+                description: "Doubles passive income speed.",
+                owned: false,
+                unlockCondition: () => shopItems[0].owned >= 5 && gameData.currentWorld >= 0,
+                purchase: function() {
+                    if (gameData.score >= this.cost && !this.owned) {
+                        gameData.score -= this.cost;
+                        gameData.passiveIncome *= this.effect;
+                        this.owned = true;
+                        return true;
+                    }
+                    return false;
+                }
+            },
+            {
+              name: "World 2 Clicks",
+              cost: 2000,
+              effect: 4,
+              type: "click_multiplier",
+              description: "Permanently increases score per click (WORLD 2 EXCLUSIVE).",
+              owned: false,
+              unlockCondition: () => gameData.currentWorld >= 1,
+              purchase: function() {
+                  if (gameData.score >= this.cost && !this.owned) {
+                      gameData.score -= this.cost;
+                      gameData.clickMultiplier += this.effect;
+                      this.owned = true;
+                      return true;
+                  }
+                  return false;
+              }
+          }
+        ];
+
+        // ------------------- Worlds -------------------
+        const worlds = [
+            { name: "World 1", unlockCost: 0 },
+            { name: "World 2", unlockCost: 100000 },
+            { name: "World 3", unlockCost: 1000000 }
+        ];
+
+        // ------------------- Functions -------------------
+        function updateScoreDisplay() {
+            scoreDisplay.textContent = "Score: " + formatNumber(gameData.score);
+            prestigeDisplay.textContent = "Prestige: " + formatNumber(gameData.prestigePoints);
+        }
+
+        function formatNumber(number) {
+            const suffixes = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "De"];
+            if (number < 1000) {
+                return number.toFixed(2);
+            }
+            const exponent = Math.floor(Math.log10(number) / 3);
+            const suffix = suffixes[exponent] || "OVERFLOW";
+            const scaledNumber = number / Math.pow(10, exponent * 3);
+            return scaledNumber.toFixed(2) + suffix;
+        }
+
+        function gameLoop() {
+            gameData.score += gameData.passiveIncome / 10;
+            updateScoreDisplay();
+            saveGame();
+        }
+
+        // ------------------- Event Handlers -------------------
+        function handleShopClick(event) {
+            if (event.target.tagName === "BUTTON") {
+                const itemIndex = event.target.dataset.index;
+                const item = shopItems[itemIndex];
+
+                if (item.purchase()) {
+                    updateUI();
+                } else {
+                    alert("Not enough score!");
+                }
+            }
+        }
+
+        function handleUpgradeClick(event) {
+            if (event.target.tagName === "BUTTON") {
+                const upgradeIndex = event.target.dataset.index;
+                const upgrade = upgrades[upgradeIndex];
+
+                if (upgrade.purchase()) {
+                    updateUI();
+                } else {
+                    alert("Cannot purchase this upgrade.");
+                }
+            }
+        }
+
+        function handleWorldClick(event) {
+            if (event.target.tagName === "BUTTON") {
+                const worldIndex = event.target.dataset.index;
+                const world = worlds[worldIndex];
+
+                if (gameData.score >= world.unlockCost) {
+                    gameData.score -= world.unlockCost;
+                    gameData.currentWorld = parseInt(worldIndex);
+                    updateUI();
+                } else {
+                    alert("Not enough score!");
+                }
+            }
+        }
+
+        function rebirth() {
+            const prestigeGained = calculatePrestige();
+            gameData.prestigePoints += prestigeGained;
+
+            gameData.score = 0;
+            gameData.currentWorld = 0;
+            gameData.clickMultiplier = 1;
+            gameData.passiveIncome = 0;
+
+            shopItems.forEach(item => {
+                item.owned = 0;
+                item.cost = item.baseCost;
+            });
+
+            upgrades.forEach(upgrade => {
+                upgrade.owned = false;
+            });
+
+            updateUI();
+            alert(`Rebirthed! Gained ${prestigeGained} prestige points.`);
+        }
+
+        // ------------------- UI Rendering Functions -------------------
+        function renderShop() {
+            shop.innerHTML = "<h3>Shop</h3>";
+            shopItems.forEach((item, index) => {
+                if (!item.unlockCondition()) return;
+                const itemElement = document.createElement("div");
+                itemElement.classList.add("item");
+                itemElement.innerHTML = `
+                    <span>${item.name}</span>
+                    <span>Cost: ${formatNumber(item.cost)}</span>
+                    <button data-index="${index}" ${gameData.score < item.cost ? 'disabled' : ''}>Buy</button>
+                    <p>${item.description}</p>
+                    <small>Owned: ${item.owned}</small>
+                `;
+                shop.appendChild(itemElement);
+            });
+        }
+
+        function renderUpgrades() {
+            upgradesDiv.innerHTML = "<h3>Upgrades</h3>";
+            upgrades.forEach((upgrade, index) => {
+                if (!upgrade.unlockCondition()) return;
+                const itemElement = document.createElement("div");
+                itemElement.classList.add("item");
+                itemElement.innerHTML = `
+                    <span>${upgrade.name}</span>
+                    <span>Cost: ${formatNumber(upgrade.cost)}</span>
+                    <button data-index="${index}" ${gameData.score < upgrade.cost || upgrade.owned ? 'disabled' : ''}>Buy</button>
+                    <p>${upgrade.description}</p>
+                `;
+                upgradesDiv.appendChild(itemElement);
+            });
+        }
+
+        function renderWorlds() {
+            worldsDiv.innerHTML = "<h3>Worlds</h3>";
+            worlds.forEach((world, index) => {
+                const itemElement = document.createElement("div");
+                itemElement.classList.add("item");
+                itemElement.innerHTML = `
+                    <span>${world.name}</span>
+                    <span>Unlock Cost: ${formatNumber(world.unlockCost)}</span>
+                    <button data-index="${index}" ${gameData.score < world.unlockCost || index <= gameData.currentWorld ? 'disabled' : ''}>Unlock</button>
+                `;
+                worldsDiv.appendChild(itemElement);
+            });
+        }
+
+        function renderRebirth() {
+            rebirthDiv.innerHTML = "<h3>Rebirth</h3><button id='rebirthButton'>Rebirth</button>";
+        }
+
+        // ------------------- Centralized UI Update Function -------------------
+        function updateUI() {
+            updateScoreDisplay();
+            renderShop();
+            renderUpgrades();
+            renderWorlds();
+        }
+
+        // ------------------- Save/Load -------------------
+        function saveGame() {
+            localStorage.setItem("clickerGameSave", JSON.stringify(gameData));
+        }
+
+        function loadGame() {
+            const save = localStorage.getItem("clickerGameSave");
+            if (save) {
+                try {
+                    const savedData = JSON.parse(save);
+
+                    // Validate loaded data
+                    gameData.score = typeof savedData.score === 'number' ? savedData.score : 0;
+                    gameData.prestigePoints = typeof savedData.prestigePoints === 'number' ? savedData.prestigePoints : 0;
+                    gameData.currentWorld = typeof savedData.currentWorld === 'number' ? savedData.currentWorld : 0;
+                    gameData.clickMultiplier = typeof savedData.clickMultiplier === 'number' ? savedData.clickMultiplier : 1;
+                    gameData.passiveIncome = typeof savedData.passiveIncome === 'number' ? savedData.passiveIncome : 0;
+                    gameData = {
+                      ...gameData,
+                      ...savedData
+                    }
+
+                    shopItems.forEach(item => {
+                        item.cost = item.baseCost * Math.pow(1.15, item.owned);
+                    });
+
+                    updateUI();
+
+                } catch (error) {
+                    console.error("Error loading game data:", error);
+                    alert("Error loading game data. Starting a new game.");
+                    // Optionally, reset gameData to default values here.
+                }
+            }
+        }
+
+        // ------------------- Event Listener Attachments -------------------
+        shop.addEventListener("click", handleShopClick);
+        upgradesDiv.addEventListener("click", handleUpgradeClick);
+        worldsDiv.addEventListener("click", handleWorldClick);
+        rebirthDiv.addEventListener("click", rebirth);
+
+        clickArea.addEventListener("click", () => {
+            gameData.score += gameData.clickMultiplier;
+            updateScoreDisplay();
+            clickArea.classList.add("clicked");
+            setTimeout(() => clickArea.classList.remove("clicked"), 100);
+        });
+
+        saveButton.addEventListener("click", saveGame);
+        loadButton.addEventListener("click", loadGame);
+
+        // ------------------- Initialization -------------------
+        loadGame();
+        updateUI();
+        renderRebirth();
+
+        // ------------------- Game Loop -------------------
+        setInterval(gameLoop, 100);
+        setInterval(updateTitle, 1000);
+        function updateTitle(){
+          document.title = "Clicker Game - " + formatNumber(gameData.score) + " Score"
+        }
+    </script>
+</body>
+</html>

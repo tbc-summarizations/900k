@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Description for bigcode_2025-03-31_FWCUWV0.html</title>
+  <style>
+    body { background-color: #36393F; color: #DCDDDE; font-family: sans-serif; margin: 0; padding: 10px; }
+    a { color: #7289da; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    strong { font-weight: bold; }
+    em { font-style: italic; }
+    u { text-decoration: underline; }
+    s { text-decoration: line-through; }
+    code { background-color: rgba(255,255,255,0.1); padding: 2px 4px; border-radius: 3px; font-size: 90%; font-family: monospace; }
+    .discord-text { white-space: pre-wrap; word-wrap: break-word; }
+  </style>
+</head>
+<body>
+  <h1>Description for bigcode_2025-03-31_FWCUWV0.html</h1>
+  <div class="discord-text">Alright, let's get brutally honest about which levels in that 2D platformer game code are mathematically impossible to complete. We'll analyze jump heights and distances to see if the player can actually make it. I'm not holding back.
+
+<strong>Assumptions based on the Code:</strong>
+
+•   <strong>Gravity:</strong> 0.5 (pixels/frame^2)
+•   <strong>Jump Force:</strong> 12 (pixels/frame) - This is the initial upward velocity.
+•   <strong>Player Speed:</strong> 5 (pixels/frame) - Horizontal movement speed.
+•   <strong>Canvas Dimensions:</strong> 800x600 pixels
+
+<strong>Calculating Max Jump Height:</strong>
+
+We need to find out the maximum height the player can reach with a single jump. We can use the following kinematic equation:
+
+•   <code>v_f^2 = v_i^2 + 2 <em> a </em> d</code>
+
+Where:
+
+•   <code>v_f</code> = final velocity (0 at the peak of the jump)
+•   <code>v_i</code> = initial velocity (JUMP\_FORCE = 12)
+•   <code>a</code> = acceleration (GRAVITY, but negative since it acts downwards = -0.5)
+•   <code>d</code> = displacement (the height we want to find)
+
+Solving for <code>d</code>:
+
+•   <code>0 = 12^2 + 2 <em> (-0.5) </em> d</code>
+•   <code>d = 144</code>
+
+So, the maximum jump height is roughly 144 pixels.  Keep in mind, this is the <em>ideal</em> jump height, assuming instant velocity change and no obstacles.
+
+<strong>Calculating Jump Distance (approximate):</strong>
+
+To estimate the jump distance, we need to calculate the hang time (time spent in the air).  Since gravity constantly acts on the player, the time to reach the peak of the jump is:
+
+•   <code>time_to_peak = v_i / abs(a) = 12 / 0.5 = 24 frames</code>
+•   The total hang time is double this (going up and coming down): <code>total_hang_time = 2 <em> 24 = 48 frames</code>
+
+At a horizontal speed of 5 pixels/frame, the approximate jump distance is:
+
+•   <code>jump_distance = PLAYER_SPEED </em> total_hang_time = 5 <em> 48 = 240 pixels</code>
+
+This is a </em>very<em> rough estimate.  It doesn't account for the initial upward velocity contributing to horizontal movement and assumes a perfectly flat trajectory (which it isn't). Realistically, the jump distance will be </em>less<em> than 240 pixels, and affected greatly by stage terrain.
+
+<strong>Level Analysis (Based on Estimates and Gut Feeling):</strong>
+
+Let's be brutally honest about each level, keeping in mind that these estimations are not perfect:
+
+•   <strong>Level 1: Probably Possible.</strong> Simple introduction, manageable jumps. Distances are short.
+•   <strong>Level 2: Likely Possible.</strong>  A series of jumps.  Nothing seems too outrageous distance-wise.
+•   <strong>Level 3:  Questionable, but likely possible.</strong> Platforms are getting higher, but the distances between them appear manageable.  The 700 to 450 jump might be the limit, but is </em>probably<em> possible with max jump.
+•   <strong>Level 4:  Possible.</strong>  Requires some timing, but nothing is mathematically impossible. The gap from 200 -&gt; 280 isn't an instant game over.
+•   <strong>Level 5:  Very Likely Possible.</strong>  It’s a vertical level. It should be fine with the jump height. The final jump could be tight, however.
+•   <strong>Level 6:  Tricky, but Probably Possible.</strong>  Low ceiling and spaced out jumps, might require precise movement.
+•   <strong>Level 7:  Possible.</strong> This depends entirely on whether the player realizes they need to go up the upper route.
+•   <strong>Level 8:  Possible.</strong> Maze-like, but manageable heights and distances.
+•   <strong>Level 9: Highly Questionable and bordering on Impossible.</strong>  This level consists of a series of small platforms, each increasing in height and distance from the last. This requires absolutely frame-perfect jumps.
+•   <strong>Level 10: Possible, but challenging.</strong> Has several sections, and requires the player to complete them one after another. Each small jump must be done precisely, or the player is required to start over.
+
+<strong>Conclusion (My Honest Opinion):</strong>
+
+Level 9 is the most impossible one.
+
+<strong>Important Caveats:</strong>
+
+•   <strong>This is theoretical:</strong> I'm just crunching numbers based on the code. Actual playtesting will reveal the </em>true<em> difficulty. The player will also utilize movement tricks in a real scenario to push the engine.
+•   <strong>Human Skill:</strong> Some players are just </em>better<em> at platformers. They might be able to pull off jumps I deem impossible.
+•   <strong>Physics Engine Imperfections:</strong> The code's physics engine might have quirks that affect the jump height and distance (e.g., slight variations in gravity due to frame rate).
+
+In short, while </em>mathematically* I can't definitively say any level is 100% impossible without playing it myself and frame-counting, Level 9 is where my confidence in the player's ability to succeed plummets. It's a bitch.</div>
+  <hr>
+  <h2>bigcode_2025-03-31_FWCUWV0.html</h2>
+<div><a href="https://tbc-summarizations.github.io/code/bigcode_2025-03-31_FWCUWV0.html">Download bigcode_2025-03-31_FWCUWV0.html</a></div>
+</body>
+</html>
